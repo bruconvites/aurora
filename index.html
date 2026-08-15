@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Convite • Aurora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Marck+Script&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold: #C9A227;
+    --gold-light: #F1D98B;
+    --gold-deep: #8C6A12;
+    --rose: #C43D65;
+    --rose-deep: #7A1F3D;
+    --blush: #F7DCE4;
+    --cream: #FFF7EF;
+    --plum: #4A1F33;
+    --smoke: 247, 205, 221;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(ellipse at top, #2a1120, #150810 75%);
+    font-family: 'Cormorant Garamond', serif;
+    overflow:hidden;
+    overscroll-behavior:none;
+  }
+
+  #app{
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  #stage{
+    position:relative;
+    width:100%; height:100%;
+    max-width: 520px;
+    max-height: 100dvh;
+    margin: 0 auto;
+    overflow:hidden;
+    background:#000;
+    box-shadow: 0 0 80px rgba(0,0,0,.6);
+  }
+
+  .scene{
+    position:absolute; inset:0;
+    display:none;
+    align-items:center; justify-content:center;
+    cursor:pointer;
+    background:#100610;
+  }
+  .scene.active{ display:flex; }
+
+  .scene img, .scene video{
+    width:100%; height:100%;
+    object-fit:cover;
+    display:block;
+    user-select:none; -webkit-user-drag:none;
+  }
+
+  .hint{
+    position:absolute;
+    left:50%; bottom:6%;
+    transform:translateX(-50%);
+    color: var(--gold-light);
+    font-family:'Marck Script', cursive;
+    font-size:1.15rem;
+    letter-spacing:.03em;
+    text-shadow: 0 1px 10px rgba(0,0,0,.55);
+    opacity:.9;
+    animation: pulse 2.2s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes pulse{ 0%,100%{opacity:.55; transform:translateX(-50%) translateY(0);} 50%{opacity:1; transform:translateX(-50%) translateY(-4px);} }
+
+  /* --- Ornate gold pill buttons (advance / back) --- */
+  .pill-btn{
+    position:absolute;
+    z-index:20;
+    display:flex; align-items:center; gap:6px;
+    padding:8px 14px 8px 10px;
+    border-radius:999px;
+    background: linear-gradient(155deg, var(--gold-light), var(--gold) 55%, var(--gold-deep));
+    border:1px solid rgba(255,255,255,.55);
+    box-shadow: 0 3px 10px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.6);
+    color: var(--rose-deep);
+    font-family:'Cormorant Garamond', serif;
+    font-weight:600;
+    font-size:.8rem;
+    letter-spacing:.02em;
+    text-decoration:none;
+    cursor:pointer;
+    animation: shimmer 3.4s ease-in-out infinite;
+  }
+  .pill-btn span.crown-ico{ font-size:.95rem; line-height:1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+  .pill-btn span.txt{ color: var(--rose); text-shadow: 0 1px 0 rgba(255,255,255,.35); }
+  @keyframes shimmer{
+    0%,100%{ box-shadow: 0 3px 10px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.6), 0 0 0 rgba(241,217,139,0); }
+    50%{ box-shadow: 0 3px 14px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.8), 0 0 14px rgba(241,217,139,.55); }
+  }
+
+  #btnAdvance{ right:12px; bottom:14px; }
+  #btnBack{ left:12px; top:14px; }
+
+  /* --- RSVP hotspots over the artwork's own badges --- */
+  .hotspot{
+    position:absolute;
+    z-index:15;
+    cursor:pointer;
+    background:transparent;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #hsConfirm{ left:2%; top:55.5%; width:29%; height:16%; }
+  #hsLocal{ left:69%; top:55.5%; width:29%; height:16%; }
+
+  /* --- Pink smoke transition overlay --- */
+  #veil{
+    position:absolute; inset:0;
+    z-index:50;
+    pointer-events:none;
+    opacity:0;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(var(--smoke), .95), transparent 55%),
+      radial-gradient(circle at 80% 70%, rgba(var(--smoke), .95), transparent 55%),
+      radial-gradient(circle at 50% 50%, rgba(255,247,239,.9), transparent 60%);
+    filter: blur(18px);
+    transition: opacity .38s ease;
+  }
+  #veil.show{ opacity:1; }
+
+  /* --- Crown click-burst effect --- */
+  .crown-pop{
+    position:fixed;
+    z-index:999;
+    pointer-events:none;
+    font-size: 22px;
+    filter: drop-shadow(0 0 6px rgba(201,162,39,.85)) drop-shadow(0 2px 2px rgba(0,0,0,.35));
+    animation: crownFloat 950ms ease-out forwards;
+    will-change: transform, opacity;
+  }
+  @keyframes crownFloat{
+    0%{ opacity:0; transform: translate(-50%,-50%) scale(.4) rotate(var(--rot,0deg)); }
+    15%{ opacity:1; transform: translate(-50%,-50%) scale(1) rotate(var(--rot,0deg)); }
+    100%{ opacity:0; transform: translate(calc(-50% + var(--dx,0px)), calc(-50% - 70px)) scale(.85) rotate(var(--rot,0deg)); }
+  }
+
+  #muteBtn{
+    position:absolute; z-index:60;
+    right:12px; top:14px;
+    width:30px; height:30px;
+    border-radius:50%;
+    background: rgba(20,8,16,.45);
+    border:1px solid rgba(241,217,139,.55);
+    color: var(--gold-light);
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px;
+    cursor:pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .pill-btn, .hint, .crown-pop, #veil{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="stage">
+
+    <!-- Scene 0: envelope / cover -->
+    <div class="scene active" id="scene-envelope" data-scene="envelope">
+      <img src="primeira.jpg" alt="Convite de Aurora — clique no envelope" draggable="false">
+    </div>
+
+    <!-- Scene: video player (shared element for video1..video8) -->
+    <div class="scene" id="scene-video" data-scene="video">
+      <video id="player" playsinline webkit-playsinline preload="auto"></video>
+      <a class="pill-btn" id="btnAdvance">
+        <span class="crown-ico">♛</span><span class="txt">Clique aqui para avançar</span>
+      </a>
+    </div>
+
+    <!-- Scene: RSVP / last page -->
+    <div class="scene" id="scene-rsvp" data-scene="rsvp">
+      <img src="ultima.jpg" alt="Confirme sua presença" draggable="false">
+      <a class="pill-btn" id="btnBack">
+        <span class="crown-ico">♛</span><span class="txt">Voltar ao convite</span>
+      </a>
+      <div class="hotspot" id="hsConfirm" title="Confirmar presença"></div>
+      <div class="hotspot" id="hsLocal" title="Ver localização"></div>
+    </div>
+
+    <button id="muteBtn" aria-label="Som">♪</button>
+    <div id="veil"></div>
+  </div>
+</div>
+
+<audio id="bgm" src="audio.mp3" loop preload="auto"></audio>
+
+<script>
+(function(){
+  "use strict";
+
+  var TOTAL_VIDEOS = 8;
+  var BGM_VOLUME = 0.28; // medium — stays under the voice in the videos
+
+  var stage        = document.getElementById('stage');
+  var sceneEnvelope = document.getElementById('scene-envelope');
+  var sceneVideo    = document.getElementById('scene-video');
+  var sceneRsvp      = document.getElementById('scene-rsvp');
+  var player        = document.getElementById('player');
+  var veil           = document.getElementById('veil');
+  var bgm            = document.getElementById('bgm');
+  var btnAdvance     = document.getElementById('btnAdvance');
+  var btnBack        = document.getElementById('btnBack');
+  var hsConfirm       = document.getElementById('hsConfirm');
+  var hsLocal          = document.getElementById('hsLocal');
+  var muteBtn          = document.getElementById('muteBtn');
+
+  var currentVideoIndex = 1;
+  var musicStarted = false;
+  var muted = false;
+
+  bgm.volume = BGM_VOLUME;
+
+  function startMusicIfNeeded(){
+    if (musicStarted) return;
+    musicStarted = true;
+    var p = bgm.play();
+    if (p && p.catch) p.catch(function(){ /* will retry on next gesture */ musicStarted = false; });
+  }
+
+  function showScene(el){
+    [sceneEnvelope, sceneVideo, sceneRsvp].forEach(function(s){ s.classList.remove('active'); });
+    el.classList.add('active');
+  }
+
+  function withVeil(applyFn){
+    veil.classList.add('show');
+    window.setTimeout(function(){
+      applyFn();
+      window.setTimeout(function(){
+        veil.classList.remove('show');
+      }, 60);
+    }, 380);
+  }
+
+  function playVideo(n){
+    currentVideoIndex = n;
+    player.src = 'video' + n + '.mp4';
+    player.currentTime = 0;
+    player.muted = false;
+    var p = player.play();
+    if (p && p.catch) p.catch(function(){ /* ignore autoplay race */ });
+  }
+
+  function goToVideo(n){
+    withVeil(function(){
+      showScene(sceneVideo);
+      playVideo(n);
+    });
+  }
+
+  function goToRsvp(){
+    withVeil(function(){
+      player.pause();
+      showScene(sceneRsvp);
+    });
+  }
+
+  function goToStart(){
+    withVeil(function(){
+      showScene(sceneVideo);
+      playVideo(1);
+    });
+  }
+
+  // Envelope -> video 1
+  sceneEnvelope.addEventListener('click', function(){
+    startMusicIfNeeded();
+    goToVideo(1);
+  });
+
+  // Video ended -> next video, or RSVP after the last one
+  player.addEventListener('ended', function(){
+    if (currentVideoIndex < TOTAL_VIDEOS){
+      goToVideo(currentVideoIndex + 1);
+    } else {
+      goToRsvp();
+    }
+  });
+
+  // Small gold "advance" button during any video -> jump straight to RSVP
+  btnAdvance.addEventListener('click', function(e){
+    e.stopPropagation();
+    goToRsvp();
+  });
+
+  // "Voltar ao convite" on the RSVP page -> back to video 1
+  btnBack.addEventListener('click', function(e){
+    e.stopPropagation();
+    goToStart();
+  });
+
+  // RSVP hotspots
+  hsConfirm.addEventListener('click', function(e){
+    e.stopPropagation();
+    window.open('https://wa.link/t4kupz', '_blank');
+  });
+  hsLocal.addEventListener('click', function(e){
+    e.stopPropagation();
+    window.open('https://maps.app.goo.gl/fkbkoS5qn29yFys6A?g_st=ic', '_blank');
+  });
+
+  // Mute toggle for the background music
+  muteBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    muted = !muted;
+    bgm.muted = muted;
+    muteBtn.textContent = muted ? '✕' : '♪';
+  });
+
+  // --- Golden crown click-burst, everywhere, first page to last ---
+  var CROWN = '♛';
+  function spawnCrown(x, y){
+    var el = document.createElement('div');
+    el.className = 'crown-pop';
+    el.textContent = CROWN;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.setProperty('--dx', (Math.random() * 40 - 20) + 'px');
+    el.style.setProperty('--rot', (Math.random() * 30 - 15) + 'deg');
+    el.style.color = Math.random() > 0.5 ? '#E8C55A' : '#F1D98B';
+    document.body.appendChild(el);
+    window.setTimeout(function(){ el.remove(); }, 1000);
+  }
+  document.addEventListener('click', function(e){
+    startMusicIfNeeded();
+    spawnCrown(e.clientX, e.clientY);
+  }, true);
+
+  // Keep audio context alive across tab visibility changes on mobile
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden && musicStarted && bgm.paused && !muted){
+      bgm.play().catch(function(){});
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
